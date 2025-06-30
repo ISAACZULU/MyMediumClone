@@ -3,9 +3,9 @@ package org.example.controller;
 import org.example.dto.ArticleAnalyticsDto;
 import org.example.dto.ReadingHistoryDto;
 import org.example.service.AnalyticsService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import lombok.RequiredArgsConstructor;
 
 import java.security.Principal;
 import java.util.List;
@@ -13,10 +13,10 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/analytics")
 @CrossOrigin(origins = "*")
+@RequiredArgsConstructor
 public class AnalyticsController {
     
-    @Autowired
-    private AnalyticsService analyticsService;
+    private final AnalyticsService analyticsService;
     
     @GetMapping("/reading-history")
     public ResponseEntity<List<ReadingHistoryDto>> getUserReadingHistory(Principal principal) {

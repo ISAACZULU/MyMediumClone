@@ -10,6 +10,8 @@ import org.example.repository.ArticleRepository;
 import org.example.repository.CommentRepository;
 import org.example.repository.UserRepository;
 import org.example.service.CommentService;
+import org.example.exception.ResourceNotFoundException;
+import org.example.exception.ForbiddenException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -37,10 +39,10 @@ public class CommentServiceImpl implements CommentService {
     @Override
     public CommentResponseDto createComment(Long articleId, CommentCreateDto commentDto, String username) {
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         
         Article article = articleRepository.findById(articleId)
-                .orElseThrow(() -> new RuntimeException("Article not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Article not found"));
 
         Comment comment = new Comment();
         comment.setContent(commentDto.getContent());
@@ -52,7 +54,7 @@ public class CommentServiceImpl implements CommentService {
         // Handle parent comment if specified
         if (commentDto.getParentId() != null) {
             Comment parentComment = commentRepository.findById(commentDto.getParentId())
-                    .orElseThrow(() -> new RuntimeException("Parent comment not found"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Parent comment not found"));
             comment.setParent(parentComment);
         }
 
@@ -63,14 +65,14 @@ public class CommentServiceImpl implements CommentService {
     @Override
     public CommentResponseDto updateComment(Long commentId, CommentCreateDto commentDto, String username) {
         Comment comment = commentRepository.findById(commentId)
-                .orElseThrow(() -> new RuntimeException("Comment not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Comment not found"));
 
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         // Check if user is the author of the comment
         if (!comment.getAuthor().getId().equals(user.getId())) {
-            throw new RuntimeException("Not authorized to update this comment");
+            throw new ForbiddenException("Not authorized to update this comment");
         }
 
         comment.setContent(commentDto.getContent());
@@ -83,14 +85,14 @@ public class CommentServiceImpl implements CommentService {
     @Override
     public void deleteComment(Long commentId, String username) {
         Comment comment = commentRepository.findById(commentId)
-                .orElseThrow(() -> new RuntimeException("Comment not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Comment not found"));
 
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         // Check if user is the author of the comment
         if (!comment.getAuthor().getId().equals(user.getId())) {
-            throw new RuntimeException("Not authorized to delete this comment");
+            throw new ForbiddenException("Not authorized to delete this comment");
         }
 
         commentRepository.delete(comment);

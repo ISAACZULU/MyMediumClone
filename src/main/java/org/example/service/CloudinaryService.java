@@ -9,7 +9,6 @@ import org.example.repository.MediaRepository;
 import org.example.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -20,20 +19,21 @@ import java.util.Map;
 import java.util.UUID;
 
 import com.cloudinary.Transformation;
+import lombok.RequiredArgsConstructor;
+import org.example.exception.ValidationException;
+import org.example.exception.ResourceNotFoundException;
 
 @Service
+@RequiredArgsConstructor
 public class CloudinaryService {
     
     private static final Logger logger = LoggerFactory.getLogger(CloudinaryService.class);
     
-    @Autowired
-    private Cloudinary cloudinary;
+    private final Cloudinary cloudinary;
     
-    @Autowired
-    private MediaRepository mediaRepository;
+    private final MediaRepository mediaRepository;
     
-    @Autowired
-    private UserRepository userRepository;
+    private final UserRepository userRepository;
     
     @Value("${app.cloudinary.folder:medium-clone}")
     private String cloudinaryFolder;
@@ -43,7 +43,7 @@ public class CloudinaryService {
     
     public MediaResponseDto uploadImage(MultipartFile file, Long userId) throws IOException {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         
         // Generate unique filename
         String originalFilename = file.getOriginalFilename();

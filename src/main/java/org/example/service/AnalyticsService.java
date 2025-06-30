@@ -4,8 +4,9 @@ import org.example.dto.ArticleAnalyticsDto;
 import org.example.dto.ReadingHistoryDto;
 import org.example.entity.*;
 import org.example.repository.*;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import lombok.RequiredArgsConstructor;
+import org.example.exception.ResourceNotFoundException;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -13,29 +14,24 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class AnalyticsService {
     
-    @Autowired
-    private ReadingHistoryRepository readingHistoryRepository;
+    private final ReadingHistoryRepository readingHistoryRepository;
     
-    @Autowired
-    private ArticleRepository articleRepository;
+    private final ArticleRepository articleRepository;
     
-    @Autowired
-    private UserRepository userRepository;
+    private final UserRepository userRepository;
     
-    @Autowired
-    private ClapRepository clapRepository;
+    private final ClapRepository clapRepository;
     
-    @Autowired
-    private BookmarkRepository bookmarkRepository;
+    private final BookmarkRepository bookmarkRepository;
     
-    @Autowired
-    private CommentRepository commentRepository;
+    private final CommentRepository commentRepository;
     
     public List<ReadingHistoryDto> getUserReadingHistory(String username) {
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         
         List<ReadingHistory> history = readingHistoryRepository.findByUserOrderByReadAtDesc(user);
         

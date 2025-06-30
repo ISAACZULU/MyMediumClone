@@ -6,24 +6,24 @@ import org.example.dto.PasswordResetDto;
 import org.example.dto.UserLoginDto;
 import org.example.dto.UserRegistrationDto;
 import org.example.service.UserService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/v1/auth")
 @CrossOrigin(origins = "*")
+@RequiredArgsConstructor
 public class AuthController {
     
-    @Autowired
-    private UserService userService;
+    private final UserService userService;
     
     @PostMapping("/register")
     public ResponseEntity<AuthResponseDto> registerUser(@Valid @RequestBody UserRegistrationDto registrationDto) {
         try {
             AuthResponseDto response = userService.registerUser(registrationDto);
             return ResponseEntity.ok(response);
-        } catch (RuntimeException e) {
+        } catch (Exception e) {
             return ResponseEntity.badRequest().body(new AuthResponseDto(e.getMessage()));
         }
     }
@@ -33,7 +33,7 @@ public class AuthController {
         try {
             AuthResponseDto response = userService.loginUser(loginDto);
             return ResponseEntity.ok(response);
-        } catch (RuntimeException e) {
+        } catch (Exception e) {
             return ResponseEntity.badRequest().body(new AuthResponseDto(e.getMessage()));
         }
     }
@@ -43,7 +43,7 @@ public class AuthController {
         try {
             AuthResponseDto response = userService.requestPasswordReset(resetDto);
             return ResponseEntity.ok(response);
-        } catch (RuntimeException e) {
+        } catch (Exception e) {
             return ResponseEntity.badRequest().body(new AuthResponseDto(e.getMessage()));
         }
     }

@@ -5,12 +5,12 @@ import org.example.service.ArticleService;
 import org.example.service.BookmarkService;
 import org.example.service.UserService;
 import org.example.service.RecommendationService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
+import lombok.RequiredArgsConstructor;
 
 import java.security.Principal;
 import java.time.Duration;
@@ -21,15 +21,12 @@ import java.util.Set;
 @RestController
 @RequestMapping("/api/v1/articles")
 @CrossOrigin(origins = "*")
+@RequiredArgsConstructor
 public class ArticleController {
-    @Autowired
-    private ArticleService articleService;
-    @Autowired
-    private UserService userService;
-    @Autowired
-    private RecommendationService recommendationService;
-    @Autowired
-    private BookmarkService bookmarkService;
+    private final ArticleService articleService;
+    private final UserService userService;
+    private final RecommendationService recommendationService;
+    private final BookmarkService bookmarkService;
 
     @PostMapping
     public ResponseEntity<ArticleResponseDto> createArticle(@RequestBody ArticleCreateDto dto, Principal principal) {

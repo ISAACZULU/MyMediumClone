@@ -10,11 +10,11 @@ import org.example.repository.UserRepository;
 import org.example.config.CdnConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import lombok.RequiredArgsConstructor;
 
 import java.io.File;
 import java.io.IOException;
@@ -29,7 +29,12 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import org.example.exception.ResourceNotFoundException;
+import org.example.exception.ValidationException;
+import org.example.exception.ForbiddenException;
+
 @Service
+@RequiredArgsConstructor
 public class MediaService {
     
     private static final Logger logger = LoggerFactory.getLogger(MediaService.class);
@@ -64,12 +69,9 @@ public class MediaService {
     @Value("${app.cdn.enabled}")
     private boolean cdnEnabled;
     
-    @Autowired
-    private MediaRepository mediaRepository;
-    @Autowired
-    private UserRepository userRepository;
-    @Autowired
-    private CdnConfig cdnConfig;
+    private final MediaRepository mediaRepository;
+    private final UserRepository userRepository;
+    private final CdnConfig cdnConfig;
     
     public MediaResponseDto uploadFile(MultipartFile file, Long userId) throws IOException {
         User user = userRepository.findById(userId)
@@ -120,16 +122,14 @@ public class MediaService {
     
     private void validateFile(MultipartFile file) {
         if (file.isEmpty()) {
-            throw new RuntimeException("File is empty");
+            throw new ValidationException("File is empty");
         }
-        
         if (file.getSize() > maxFileSize) {
-            throw new RuntimeException("File size exceeds maximum allowed size");
+            throw new ValidationException("File size exceeds maximum allowed size");
         }
-        
         String contentType = file.getContentType();
         if (contentType == null || !isAllowedFileType(contentType)) {
-            throw new RuntimeException("File type not allowed");
+            throw new ValidationException("File type not allowed");
         }
     }
     
@@ -164,7 +164,7 @@ public class MediaService {
             }
             return hexString.toString();
         } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException("Failed to generate file hash", e);
+            throw new ValidationException("Failed to generate file hash");
         }
     }
     
@@ -264,29 +264,24 @@ public class MediaService {
     
     public byte[] getMediaFile(Long mediaId) throws IOException {
         Media media = mediaRepository.findById(mediaId)
-                .orElseThrow(() -> new RuntimeException("Media not found"));
-        
+                .orElseThrow(() -> new ResourceNotFoundException("Media not found"));
         Path filePath = Paths.get(media.getFilePath());
         if (!Files.exists(filePath)) {
-            throw new RuntimeException("Media file not found");
+            throw new ResourceNotFoundException("Media file not found");
         }
-        
         return Files.readAllBytes(filePath);
     }
     
     public byte[] getMediaThumbnail(Long mediaId) throws IOException {
         Media media = mediaRepository.findById(mediaId)
-                .orElseThrow(() -> new RuntimeException("Media not found"));
-        
+                .orElseThrow(() -> new ResourceNotFoundException("Media not found"));
         if (media.getThumbnailPath() == null) {
-            throw new RuntimeException("Thumbnail not available");
+            throw new ResourceNotFoundException("Thumbnail not available");
         }
-        
         Path thumbnailPath = Paths.get(media.getThumbnailPath());
         if (!Files.exists(thumbnailPath)) {
-            throw new RuntimeException("Thumbnail file not found");
+            throw new ResourceNotFoundException("Thumbnail file not found");
         }
-        
         return Files.readAllBytes(thumbnailPath);
     }
 } 

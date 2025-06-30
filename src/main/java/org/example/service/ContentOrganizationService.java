@@ -3,35 +3,34 @@ package org.example.service;
 import org.example.dto.*;
 import org.example.entity.*;
 import org.example.repository.*;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import lombok.RequiredArgsConstructor;
+import org.example.exception.ResourceNotFoundException;
+import org.example.exception.ForbiddenException;
+import org.example.exception.NotAllowedException;
 
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class ContentOrganizationService {
     
-    @Autowired
-    private TagRepository tagRepository;
+    private final TagRepository tagRepository;
     
-    @Autowired
-    private ArticleCollectionRepository articleCollectionRepository;
+    private final ArticleCollectionRepository articleCollectionRepository;
     
-    @Autowired
-    private DraftRepository draftRepository;
+    private final DraftRepository draftRepository;
     
-    @Autowired
-    private UserRepository userRepository;
+    private final UserRepository userRepository;
     
-    @Autowired
-    private ArticleRepository articleRepository;
+    private final ArticleRepository articleRepository;
     
     // Tag functionality
     public List<TagSuggestionDto> getTagSuggestions(String query, int limit) {
@@ -59,7 +58,7 @@ public class ContentOrganizationService {
     
     public List<TagSuggestionDto> getTagRecommendations(String username, int limit) {
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         
         // Get user's recent tags and find similar ones
         List<Tag> userTags = tagRepository.findRecentlyActiveTags();
@@ -100,7 +99,7 @@ public class ContentOrganizationService {
     @Transactional
     public ArticleCollectionDto createCollection(ArticleCollectionDto dto, String username) {
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         
         ArticleCollection collection = new ArticleCollection(
                 dto.getName(), dto.getDescription(), dto.isPublic(), dto.isCollaborative(), user);
@@ -123,13 +122,13 @@ public class ContentOrganizationService {
     @Transactional
     public ArticleCollectionDto updateCollection(Long collectionId, ArticleCollectionDto dto, String username) {
         ArticleCollection collection = articleCollectionRepository.findById(collectionId)
-                .orElseThrow(() -> new RuntimeException("Collection not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Collection not found"));
         
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         
         if (!collection.canEdit(user)) {
-            throw new RuntimeException("You don't have permission to edit this collection");
+            throw new ForbiddenException("You don't have permission to edit this collection");
         }
         
         if (dto.getName() != null) collection.setName(dto.getName());
@@ -155,16 +154,16 @@ public class ContentOrganizationService {
     @Transactional
     public void addArticleToCollection(Long collectionId, Long articleId, String username) {
         ArticleCollection collection = articleCollectionRepository.findById(collectionId)
-                .orElseThrow(() -> new RuntimeException("Collection not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Collection not found"));
         
         Article article = articleRepository.findById(articleId)
-                .orElseThrow(() -> new RuntimeException("Article not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Article not found"));
         
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         
         if (!collection.canEdit(user)) {
-            throw new RuntimeException("You don't have permission to edit this collection");
+            throw new ForbiddenException("You don't have permission to edit this collection");
         }
         
         collection.addArticle(article);
@@ -174,16 +173,16 @@ public class ContentOrganizationService {
     @Transactional
     public void removeArticleFromCollection(Long collectionId, Long articleId, String username) {
         ArticleCollection collection = articleCollectionRepository.findById(collectionId)
-                .orElseThrow(() -> new RuntimeException("Collection not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Collection not found"));
         
         Article article = articleRepository.findById(articleId)
-                .orElseThrow(() -> new RuntimeException("Article not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Article not found"));
         
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         
         if (!collection.canEdit(user)) {
-            throw new RuntimeException("You don't have permission to edit this collection");
+            throw new ForbiddenException("You don't have permission to edit this collection");
         }
         
         collection.removeArticle(article);
@@ -193,16 +192,16 @@ public class ContentOrganizationService {
     @Transactional
     public void addCollaborator(Long collectionId, String collaboratorUsername, String username) {
         ArticleCollection collection = articleCollectionRepository.findById(collectionId)
-                .orElseThrow(() -> new RuntimeException("Collection not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Collection not found"));
         
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         
         User collaborator = userRepository.findByUsername(collaboratorUsername)
-                .orElseThrow(() -> new RuntimeException("Collaborator not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Collaborator not found"));
         
         if (!collection.getOwner().equals(user)) {
-            throw new RuntimeException("Only the owner can add collaborators");
+            throw new ForbiddenException("Only the owner can add collaborators");
         }
         
         collection.addCollaborator(collaborator);
@@ -211,7 +210,7 @@ public class ContentOrganizationService {
     
     public List<ArticleCollectionDto> getUserCollections(String username) {
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         
         List<ArticleCollection> collections = articleCollectionRepository.findByOwner(user);
         List<ArticleCollection> collaborativeCollections = articleCollectionRepository.findByCollaborator(user);
@@ -227,13 +226,13 @@ public class ContentOrganizationService {
     
     public ArticleCollectionDto getCollection(Long collectionId, String username) {
         ArticleCollection collection = articleCollectionRepository.findById(collectionId)
-                .orElseThrow(() -> new RuntimeException("Collection not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Collection not found"));
         
         if (!collection.isPublic()) {
             User user = userRepository.findByUsername(username)
-                    .orElseThrow(() -> new RuntimeException("User not found"));
+                    .orElseThrow(() -> new ResourceNotFoundException("User not found"));
             if (!collection.canEdit(user)) {
-                throw new RuntimeException("This collection is private");
+                throw new NotAllowedException("This collection is private");
             }
         }
         
@@ -250,7 +249,7 @@ public class ContentOrganizationService {
     @Transactional
     public DraftDto createDraft(String username) {
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         
         Draft draft = new Draft(user);
         Draft saved = draftRepository.save(draft);
@@ -261,13 +260,13 @@ public class ContentOrganizationService {
     @Transactional
     public DraftDto autoSaveDraft(Long draftId, DraftDto dto, String username) {
         Draft draft = draftRepository.findById(draftId)
-                .orElseThrow(() -> new RuntimeException("Draft not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Draft not found"));
         
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         
         if (!draft.getAuthor().equals(user)) {
-            throw new RuntimeException("You can only edit your own drafts");
+            throw new ForbiddenException("You can only edit your own drafts");
         }
         
         if (dto.getTitle() != null) draft.setTitle(dto.getTitle());
@@ -292,7 +291,7 @@ public class ContentOrganizationService {
     
     public List<DraftDto> getUserDrafts(String username, boolean includeArchived) {
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         
         List<Draft> drafts;
         if (includeArchived) {
@@ -309,13 +308,13 @@ public class ContentOrganizationService {
     @Transactional
     public void archiveDraft(Long draftId, String username) {
         Draft draft = draftRepository.findById(draftId)
-                .orElseThrow(() -> new RuntimeException("Draft not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Draft not found"));
         
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         
         if (!draft.getAuthor().equals(user)) {
-            throw new RuntimeException("You can only archive your own drafts");
+            throw new ForbiddenException("You can only archive your own drafts");
         }
         
         draft.archive();
@@ -325,13 +324,13 @@ public class ContentOrganizationService {
     @Transactional
     public void deleteDraft(Long draftId, String username) {
         Draft draft = draftRepository.findById(draftId)
-                .orElseThrow(() -> new RuntimeException("Draft not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Draft not found"));
         
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         
         if (!draft.getAuthor().equals(user)) {
-            throw new RuntimeException("You can only delete your own drafts");
+            throw new ForbiddenException("You can only delete your own drafts");
         }
         
         draftRepository.delete(draft);

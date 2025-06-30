@@ -3,13 +3,16 @@ package org.example.service;
 import org.example.dto.*;
 import org.example.entity.*;
 import org.example.repository.*;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import lombok.RequiredArgsConstructor;
+import org.example.exception.ResourceNotFoundException;
+import org.example.exception.ForbiddenException;
+import org.example.exception.NotAllowedException;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -17,25 +20,20 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class EngagementService {
     
-    @Autowired
-    private ClapRepository clapRepository;
+    private final ClapRepository clapRepository;
     
-    @Autowired
-    private CommentRepository commentRepository;
+    private final CommentRepository commentRepository;
     
-    @Autowired
-    private BookmarkRepository bookmarkRepository;
+    private final BookmarkRepository bookmarkRepository;
     
-    @Autowired
-    private BookmarkCollectionRepository bookmarkCollectionRepository;
+    private final BookmarkCollectionRepository bookmarkCollectionRepository;
     
-    @Autowired
-    private ArticleRepository articleRepository;
+    private final ArticleRepository articleRepository;
     
-    @Autowired
-    private UserRepository userRepository;
+    private final UserRepository userRepository;
     
     @Value("${app.base-url:http://localhost:8080}")
     private String baseUrl;
@@ -44,9 +42,9 @@ public class EngagementService {
     @Transactional
     public ClapDto clapArticle(Long articleId, Integer clapCount, String username) {
         Article article = articleRepository.findById(articleId)
-                .orElseThrow(() -> new RuntimeException("Article not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Article not found"));
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         
         Optional<Clap> existingClap = clapRepository.findByArticleAndUser(article, user);
         Clap clap;
@@ -76,7 +74,7 @@ public class EngagementService {
     
     public ClapDto getClapInfo(Long articleId, String username) {
         Article article = articleRepository.findById(articleId)
-                .orElseThrow(() -> new RuntimeException("Article not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Article not found"));
         
         Long totalClaps = clapRepository.getTotalClapsForArticle(article);
         boolean hasClapped = false;
@@ -106,15 +104,15 @@ public class EngagementService {
     @Transactional
     public CommentResponseDto createComment(Long articleId, CommentCreateDto dto, String username) {
         Article article = articleRepository.findById(articleId)
-                .orElseThrow(() -> new RuntimeException("Article not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Article not found"));
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         
         Comment comment = new Comment(dto.getContent(), article, user);
         
         if (dto.getParentId() != null) {
             Comment parent = commentRepository.findById(dto.getParentId())
-                    .orElseThrow(() -> new RuntimeException("Parent comment not found"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Parent comment not found"));
             comment.setParent(parent);
         }
         
@@ -128,10 +126,10 @@ public class EngagementService {
     @Transactional
     public CommentResponseDto updateComment(Long commentId, String content, String username) {
         Comment comment = commentRepository.findById(commentId)
-                .orElseThrow(() -> new RuntimeException("Comment not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Comment not found"));
         
         if (!comment.getAuthor().getUsername().equals(username)) {
-            throw new RuntimeException("You can only edit your own comments");
+            throw new ForbiddenException("You can only edit your own comments");
         }
         
         comment.setContent(content);
@@ -143,10 +141,10 @@ public class EngagementService {
     @Transactional
     public void deleteComment(Long commentId, String username) {
         Comment comment = commentRepository.findById(commentId)
-                .orElseThrow(() -> new RuntimeException("Comment not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Comment not found"));
         
         if (!comment.getAuthor().getUsername().equals(username)) {
-            throw new RuntimeException("You can only delete your own comments");
+            throw new ForbiddenException("You can only delete your own comments");
         }
         
         Article article = comment.getArticle();
@@ -159,7 +157,7 @@ public class EngagementService {
     @Transactional
     public void flagComment(Long commentId, String username) {
         Comment comment = commentRepository.findById(commentId)
-                .orElseThrow(() -> new RuntimeException("Comment not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Comment not found"));
         
         comment.incrementFlagCount();
         if (comment.getFlagCount() >= 3) {
@@ -207,16 +205,16 @@ public class EngagementService {
     @Transactional
     public void bookmarkArticle(Long articleId, Long collectionId, String username) {
         Article article = articleRepository.findById(articleId)
-                .orElseThrow(() -> new RuntimeException("Article not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Article not found"));
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         
         BookmarkCollection collection = null;
         if (collectionId != null) {
             collection = bookmarkCollectionRepository.findById(collectionId)
-                    .orElseThrow(() -> new RuntimeException("Collection not found"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Collection not found"));
             if (!collection.getOwner().equals(user)) {
-                throw new RuntimeException("You can only add to your own collections");
+                throw new ForbiddenException("You can only add to your own collections");
             }
         }
         
@@ -234,9 +232,9 @@ public class EngagementService {
     @Transactional
     public void removeBookmark(Long articleId, String username) {
         Article article = articleRepository.findById(articleId)
-                .orElseThrow(() -> new RuntimeException("Article not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Article not found"));
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         
         Optional<Bookmark> bookmark = bookmarkRepository.findByArticleAndUser(article, user);
         if (bookmark.isPresent()) {
@@ -247,7 +245,7 @@ public class EngagementService {
     @Transactional
     public BookmarkCollectionDto createCollection(BookmarkCollectionDto dto, String username) {
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         
         BookmarkCollection collection = new BookmarkCollection(
                 dto.getName(), dto.getDescription(), dto.isPublic(), user);
@@ -259,7 +257,7 @@ public class EngagementService {
     
     public List<BookmarkCollectionDto> getUserCollections(String username) {
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         
         List<BookmarkCollection> collections = bookmarkCollectionRepository.findByOwner(user);
         
@@ -270,10 +268,10 @@ public class EngagementService {
     
     public BookmarkCollectionDto getCollection(Long collectionId, String username) {
         BookmarkCollection collection = bookmarkCollectionRepository.findById(collectionId)
-                .orElseThrow(() -> new RuntimeException("Collection not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Collection not found"));
         
         if (!collection.isPublic() && !collection.getOwner().getUsername().equals(username)) {
-            throw new RuntimeException("This collection is private");
+            throw new NotAllowedException("This collection is private");
         }
         
         return toBookmarkCollectionDtoWithBookmarks(collection);

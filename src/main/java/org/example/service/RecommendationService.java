@@ -3,30 +3,28 @@ package org.example.service;
 import org.example.dto.ArticleResponseDto;
 import org.example.entity.*;
 import org.example.repository.*;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import lombok.RequiredArgsConstructor;
+import org.example.exception.ResourceNotFoundException;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class RecommendationService {
     
-    @Autowired
-    private ArticleRepository articleRepository;
+    private final ArticleRepository articleRepository;
     
-    @Autowired
-    private ReadingHistoryRepository readingHistoryRepository;
+    private final ReadingHistoryRepository readingHistoryRepository;
     
-    @Autowired
-    private UserRepository userRepository;
+    private final UserRepository userRepository;
     
-    @Autowired
-    private TagRepository tagRepository;
+    private final TagRepository tagRepository;
     
     public List<ArticleResponseDto> getMoreLikeThis(Long articleId, String username, int limit) {
         Article sourceArticle = articleRepository.findById(articleId)
-                .orElseThrow(() -> new RuntimeException("Article not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Article not found"));
         
         // Get tags from the source article
         Set<String> sourceTags = sourceArticle.getTags().stream()

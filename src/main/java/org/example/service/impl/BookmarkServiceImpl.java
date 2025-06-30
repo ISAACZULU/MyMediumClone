@@ -13,6 +13,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.example.exception.ResourceNotFoundException;
+import org.example.exception.ConflictException;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -31,14 +33,14 @@ public class BookmarkServiceImpl implements BookmarkService {
     @Transactional
     public void addBookmark(Long articleId, String username) {
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         
         Article article = articleRepository.findById(articleId)
-                .orElseThrow(() -> new RuntimeException("Article not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Article not found"));
         
         // Check if bookmark already exists
         if (bookmarkRepository.findByArticleIdAndUser(articleId, user).isPresent()) {
-            throw new RuntimeException("Article is already bookmarked");
+            throw new ConflictException("Article is already bookmarked");
         }
         
         Bookmark bookmark = new Bookmark(article, user);

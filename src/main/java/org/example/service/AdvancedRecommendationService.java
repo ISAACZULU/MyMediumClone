@@ -3,8 +3,9 @@ package org.example.service;
 import org.example.dto.ArticleResponseDto;
 import org.example.entity.*;
 import org.example.repository.*;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import lombok.RequiredArgsConstructor;
+import org.example.exception.ResourceNotFoundException;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
@@ -12,25 +13,20 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class AdvancedRecommendationService {
     
-    @Autowired
-    private ArticleRepository articleRepository;
+    private final ArticleRepository articleRepository;
     
-    @Autowired
-    private ReadingHistoryRepository readingHistoryRepository;
+    private final ReadingHistoryRepository readingHistoryRepository;
     
-    @Autowired
-    private ClapRepository clapRepository;
+    private final ClapRepository clapRepository;
     
-    @Autowired
-    private BookmarkRepository bookmarkRepository;
+    private final BookmarkRepository bookmarkRepository;
     
-    @Autowired
-    private CommentRepository commentRepository;
+    private final CommentRepository commentRepository;
     
-    @Autowired
-    private UserRepository userRepository;
+    private final UserRepository userRepository;
     
     // Algorithm weights (configurable)
     private static final double CONTENT_SIMILARITY_WEIGHT = 0.3;
@@ -40,7 +36,7 @@ public class AdvancedRecommendationService {
     
     public List<ArticleResponseDto> getPersonalizedRecommendations(String username, int limit) {
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         
         // Get user behavior data
         UserBehaviorProfile behaviorProfile = buildUserBehaviorProfile(user);
@@ -62,7 +58,7 @@ public class AdvancedRecommendationService {
     
     public List<ArticleResponseDto> getCollaborativeFilteringRecommendations(String username, int limit) {
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         
         // Find similar users based on reading history
         List<User> similarUsers = findSimilarUsers(user);
@@ -93,7 +89,7 @@ public class AdvancedRecommendationService {
     
     public List<ArticleResponseDto> getContentBasedRecommendations(Long articleId, String username, int limit) {
         Article sourceArticle = articleRepository.findById(articleId)
-                .orElseThrow(() -> new RuntimeException("Article not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Article not found"));
         
         // Get articles with similar content characteristics
         List<Article> similarArticles = findContentSimilarArticles(sourceArticle, limit * 2);

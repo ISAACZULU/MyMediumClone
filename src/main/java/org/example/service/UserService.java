@@ -17,6 +17,10 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.example.exception.PasswordMismatchException;
+import org.example.exception.UserAlreadyExistsException;
+import org.example.exception.ResourceNotFoundException;
+import org.example.exception.ForbiddenException;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -49,16 +53,16 @@ public class UserService implements UserDetailsService {
     public AuthResponseDto registerUser(UserRegistrationDto registrationDto) {
         // Validate password confirmation
         if (!registrationDto.getPassword().equals(registrationDto.getConfirmPassword())) {
-            throw new RuntimeException("Passwords do not match");
+            throw new PasswordMismatchException("Passwords do not match");
         }
         
         // Check if username or email already exists
         if (userRepository.existsByUsername(registrationDto.getUsername())) {
-            throw new RuntimeException("Username is already taken");
+            throw new UserAlreadyExistsException("Username is already taken");
         }
         
         if (userRepository.existsByEmail(registrationDto.getEmail())) {
-            throw new RuntimeException("Email is already registered");
+            throw new UserAlreadyExistsException("Email is already registered");
         }
         
         // Create new user
@@ -119,7 +123,7 @@ public class UserService implements UserDetailsService {
     
     public UserProfileDto getUserProfileByUsername(String username) {
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         
         User currentUser = getCurrentUser();
         UserProfileDto profileDto = convertToUserProfileDto(user);
@@ -131,10 +135,10 @@ public class UserService implements UserDetailsService {
     public void followUser(String username) {
         User currentUser = getCurrentUser();
         User userToFollow = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         
         if (currentUser.equals(userToFollow)) {
-            throw new RuntimeException("You cannot follow yourself");
+            throw new ForbiddenException("You cannot follow yourself");
         }
         
         currentUser.follow(userToFollow);
@@ -144,7 +148,7 @@ public class UserService implements UserDetailsService {
     public void unfollowUser(String username) {
         User currentUser = getCurrentUser();
         User userToUnfollow = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         
         currentUser.unfollow(userToUnfollow);
         userRepository.save(currentUser);
@@ -152,7 +156,7 @@ public class UserService implements UserDetailsService {
     
     public List<UserProfileDto> getFollowers(String username) {
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         
         return user.getFollowers().stream()
                 .map(this::convertToUserProfileDto)
@@ -161,7 +165,7 @@ public class UserService implements UserDetailsService {
     
     public List<UserProfileDto> getFollowing(String username) {
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         
         return user.getFollowing().stream()
                 .map(this::convertToUserProfileDto)

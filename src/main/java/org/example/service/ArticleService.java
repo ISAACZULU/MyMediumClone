@@ -3,12 +3,14 @@ package org.example.service;
 import org.example.dto.*;
 import org.example.entity.*;
 import org.example.repository.*;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import lombok.RequiredArgsConstructor;
+import org.example.exception.ResourceNotFoundException;
+import org.example.exception.ForbiddenException;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -16,30 +18,22 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class ArticleService {
-    @Autowired
-    private ArticleRepository articleRepository;
-    @Autowired
-    private TagRepository tagRepository;
-    @Autowired
-    private ArticleVersionRepository articleVersionRepository;
-    @Autowired
-    private ArticleLikeRepository articleLikeRepository;
-    @Autowired
-    private UserRepository userRepository;
-    @Autowired
-    private ReadingHistoryRepository readingHistoryRepository;
-    @Autowired
-    private ArticleAnalyticsRepository articleAnalyticsRepository;
-    @Autowired
-    private ShareRepository shareRepository;
-    @Autowired
-    private ArticleCollectionRepository articleCollectionRepository;
+    private final ArticleRepository articleRepository;
+    private final TagRepository tagRepository;
+    private final ArticleVersionRepository articleVersionRepository;
+    private final ArticleLikeRepository articleLikeRepository;
+    private final UserRepository userRepository;
+    private final ReadingHistoryRepository readingHistoryRepository;
+    private final ArticleAnalyticsRepository articleAnalyticsRepository;
+    private final ShareRepository shareRepository;
+    private final ArticleCollectionRepository articleCollectionRepository;
 
     @Transactional
     public ArticleResponseDto createArticle(ArticleCreateDto dto, String authorUsername) {
         User author = userRepository.findByUsername(authorUsername)
-                .orElseThrow(() -> new RuntimeException("Author not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Author not found"));
         Article article = new Article();
         article.setTitle(dto.getTitle());
         article.setContent(dto.getContent());
@@ -67,9 +61,9 @@ public class ArticleService {
     @Transactional
     public ArticleResponseDto editArticle(Long articleId, ArticleEditDto dto, String editorUsername) {
         Article article = articleRepository.findById(articleId)
-                .orElseThrow(() -> new RuntimeException("Article not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Article not found"));
         User editor = userRepository.findByUsername(editorUsername)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         boolean changed = false;
         if (dto.getTitle() != null) { article.setTitle(dto.getTitle()); changed = true; }
         if (dto.getContent() != null) { article.setContent(dto.getContent()); changed = true; }
@@ -101,16 +95,16 @@ public class ArticleService {
 
     public void deleteArticle(Long articleId, String username) {
         Article article = articleRepository.findById(articleId)
-                .orElseThrow(() -> new RuntimeException("Article not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Article not found"));
         if (!article.getAuthor().getUsername().equals(username)) {
-            throw new RuntimeException("You are not the author of this article");
+            throw new ForbiddenException("You are not the author of this article");
         }
         articleRepository.delete(article);
     }
 
     public ArticleResponseDto getArticleBySlug(String slug, String currentUsername) {
         Article article = articleRepository.findBySlug(slug)
-                .orElseThrow(() -> new RuntimeException("Article not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Article not found"));
         article.incrementViewCount();
         articleRepository.save(article);
         boolean liked = false;

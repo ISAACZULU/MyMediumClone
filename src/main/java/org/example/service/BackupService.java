@@ -16,6 +16,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.concurrent.CompletableFuture;
 import java.lang.Process;
+import java.lang.ProcessBuilder;
 
 @Service
 @RequiredArgsConstructor
@@ -176,25 +177,35 @@ public class BackupService {
     }
 
     private void createDatabaseBackup(Path backupPath) throws IOException, InterruptedException {
-        // For H2 database, we can use the built-in backup functionality
-        if (databaseUrl.contains("h2")) {
-            // H2 specific backup command
+        if (databaseUrl.contains("postgresql")) {
+            // Parse JDBC URL: jdbc:postgresql://host:port/dbname
+            String url = databaseUrl.replace("jdbc:postgresql://", "");
+            String[] parts = url.split("/");
+            String hostPort = parts[0];
+            String dbName = parts.length > 1 ? parts[1].split("\\?")[0] : "";
+            String[] hostPortArr = hostPort.split(":");
+            String host = hostPortArr[0];
+            String port = hostPortArr.length > 1 ? hostPortArr[1] : "5432";
+
+            // Build pg_dump command
             String backupCommand = String.format(
-                "java -cp h2.jar org.h2.tools.Backup -file %s -dir %s",
-                backupPath.toString(),
-                databaseUrl.replace("jdbc:h2:", "")
+                "pg_dump -h %s -p %s -U %s -F c -b -v -f \"%s\" %s",
+                host, port, databaseUsername, backupPath.toString(), dbName
             );
-            
-            Process process = Runtime.getRuntime().exec(backupCommand);
+
+            // Set environment variable for password
+            ProcessBuilder pb = new ProcessBuilder(backupCommand.split(" "));
+            pb.environment().put("PGPASSWORD", databasePassword);
+            pb.redirectErrorStream(true);
+            Process process = pb.start();
             int exitCode = process.waitFor();
-            
+
             if (exitCode != 0) {
-                throw new IOException("Database backup failed with exit code: " + exitCode);
+                throw new IOException("PostgreSQL database backup failed with exit code: " + exitCode);
             }
         } else {
-            // For other databases, implement specific backup logic
-            // This could involve mysqldump, pg_dump, etc.
-            log.warn("Database backup not implemented for database type: {}", databaseUrl);
+            // For other databases, implement specific backup logic or throw error
+            throw new UnsupportedOperationException("Database backup not implemented for this database type: " + databaseUrl);
         }
     }
 
